@@ -16,7 +16,6 @@
 import asyncio
 import time
 import uuid
-import aiohttp
 
 import octobot_commons.constants as commons_constants
 import octobot_commons.enums as commons_enums
@@ -27,6 +26,8 @@ import octobot_commons.databases as databases
 import octobot_commons.tree as commons_tree
 import octobot_commons.os_clock_sync as os_clock_sync
 import octobot_commons.system_resources_watcher as system_resources_watcher
+import octobot_commons.aiohttp_util as aiohttp_util
+import octobot_commons.profiles as profiles
 
 import octobot_services.api as service_api
 import octobot_trading.api as trading_api
@@ -114,11 +115,10 @@ class OctoBot:
     async def initialize(self):
         self.stopped = asyncio.Event()
         await self._ensure_clock()
-        self.community_auth.ensure_async_loop()
-        if not self.community_auth.is_initialized():
-            self.community_auth.init_account()
-        self._log_config()
+        if not (self.community_auth.is_initialized() and self.community_auth.is_using_the_current_loop()):
+            self.community_auth.init_account(True)
         await self.initializer.create(True)
+        self._log_config()
         await self._start_tools_tasks()
         await logger.init_octobot_chan_logger(self.bot_id)
         await self.create_producers()
@@ -158,6 +158,7 @@ class OctoBot:
 
         self.automation = automation.Automation(self.bot_id, self.tentacles_setup_config)
         self._init_metadata_run_task = asyncio.create_task(self._store_run_metadata_when_available())
+        await self._init_profile_synchronizer()
 
     async def _wait_for_run_data_init(self, exchange_managers, timeout):
         for exchange_manager in exchange_managers:
@@ -210,6 +211,7 @@ class OctoBot:
             await self.exchange_producer.stop()
             await self.community_auth.stop()
             await self.service_feed_producer.stop()
+            await profiles.stop_profile_synchronizer()
             await os_clock_sync.stop_clock_synchronizer()
             await system_resources_watcher.stop_system_resources_watcher()
             await service_api.stop_services()
@@ -223,6 +225,7 @@ class OctoBot:
             self.logger.info("Stopped, now shutting down.")
 
     async def _start_tools_tasks(self):
+        await self._init_aiohttp_session()
         self._init_community()
         await self.task_manager.start_tools_tasks()
 
@@ -233,10 +236,33 @@ class OctoBot:
         if trading_api.is_trader_enabled_in_config(self.config) and constants.ENABLE_CLOCK_SYNCH:
             await os_clock_sync.start_clock_synchronizer()
 
+    async def _init_profile_synchronizer(self):
+        await profiles.start_profile_synchronizer(
+            self.get_edited_config(constants.CONFIG_KEY, dict_only=False),
+            self._on_profile_update
+        )
+
+    async def delayed_restart(self, delay):
+        await asyncio.sleep(delay)
+        self.octobot_api.restart_bot()
+
+    async def _on_profile_update(self, profile_name: str):
+        await service_api.send_notification(
+            service_api.create_notification(
+                f"{constants.PROJECT_NAME} will restart in {constants.PROFILE_UPDATE_RESTART_MIN} minutes "
+                f"to apply the {profile_name} profile update.",
+                markdown_format=commons_enums.MarkdownFormat.ITALIC
+            )
+        )
+        asyncio.create_task(self.delayed_restart(
+            constants.PROFILE_UPDATE_RESTART_MIN * commons_constants.MINUTE_TO_SECONDS
+        ))
+
     async def _ensure_watchers(self):
         if constants.ENABLE_SYSTEM_WATCHER:
             await system_resources_watcher.start_system_resources_watcher(
                 constants.DUMP_USED_RESOURCES,
+                constants.WATCH_RAM,
                 constants.USED_RESOURCES_OUTPUT
             )
 
@@ -252,9 +278,11 @@ class OctoBot:
         trader_str = "real trader" if has_real_trader else "simulated trader" if has_simulated_trader else "no trader"
         traded_symbols = trading_api.get_config_symbols(self.config, True)
         symbols_str = ', '.join(set(traded_symbols))
+        trading_mode = trading_api.get_activated_trading_mode(self.tentacles_setup_config)
+        trading_mode_str = trading_mode.get_name() if trading_mode else "no trading mode"
         self.logger.info(f"Starting OctoBot with {trader_str} on "
                          f"{', '.join(exchanges) if exchanges else 'no exchange'} "
-                         f"trading {symbols_str or 'nothing'} and using bot_id: {self.bot_id}")
+                         f"trading {symbols_str or 'nothing'} with {trading_mode_str} and using bot_id: {self.bot_id}")
 
     def get_edited_config(self, config_key, dict_only=True):
         return self.configuration_manager.get_edited_config(config_key, dict_only)
@@ -281,7 +309,11 @@ class OctoBot:
     def set_watcher(self, watcher):
         self.task_manager.watcher = watcher
 
-    def get_aiohttp_session(self):
+    async def _init_aiohttp_session(self):
         if self._aiohttp_session is None:
-            self._aiohttp_session = aiohttp.ClientSession()
+            self._aiohttp_session = await aiohttp_util.get_ssl_fallback_aiohttp_client_session(
+                commons_constants.KNOWN_POTENTIALLY_SSL_FAILED_REQUIRED_URL
+            )
+
+    def get_aiohttp_session(self):
         return self._aiohttp_session

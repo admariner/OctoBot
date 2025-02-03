@@ -19,11 +19,16 @@ import enum
 class CommunityFeedType(enum.Enum):
     WebsocketFeed = "WebsocketFeed"
     MQTTFeed = "MQTTFeed"
+    SupabaseFeed = "SupabaseFeed"
 
 
 class CommunityEnvironments(enum.Enum):
     Staging = "Staging"
     Production = "Production"
+
+
+class CommunityConfigurationActions(enum.Enum):
+    EMAIL_CONFIRM_CODE = "email_confirm_code"
 
 
 class OptimizerModes(enum.Enum):

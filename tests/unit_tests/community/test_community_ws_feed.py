@@ -94,11 +94,10 @@ async def community_echo_server():
 @pytest_asyncio.fixture
 async def authenticator():
     community.IdentifiersProvider.use_production()
-    auth = community.CommunityAuthentication(None, None)
-    auth._auth_token = TOKEN
+    auth = community.CommunityAuthentication()
     auth.user_account._profile_raw_data = {"1": 1}
-    auth.refresh_token = TOKEN
-    auth._expire_at = 11
+    auth.is_logged_in = mock.Mock(return_value=True)
+    auth.get_backend_headers = mock.Mock(return_value={})
     return auth
 
 
@@ -128,7 +127,7 @@ async def connected_community_feed(authenticator):
                 as _fetch_stream_identifier_mock:
             await feed.register_feed_callback(commons_enums.CommunityChannelTypes.SIGNAL, mock.AsyncMock())
             _fetch_stream_identifier_mock.assert_called_once_with(None)
-            await feed.start()
+            await feed.start(None)
             yield feed
     finally:
         if feed is not None:
@@ -218,7 +217,7 @@ async def test_reconnect(authenticator):
         client = community.CommunityWSFeed(f"ws://{HOST}:{PORT}", authenticator)
         client.RECONNECT_DELAY = 0
         await client.register_feed_callback(commons_enums.CommunityChannelTypes.SIGNAL, client_handler)
-        await client.start()
+        await client.start(None)
 
         # 1. ensure client is both receiving and sending messages
         client_handler.assert_not_called()
