@@ -14,10 +14,10 @@
 #  You should have received a copy of the GNU General Public
 #  License along with OctoBot. If not, see <https://www.gnu.org/licenses/>.
 import logging
+import logging.config as config
 import os
 import shutil
 import traceback
-import logging.config as config
 
 import sys
 import async_channel.channels as channel_instances
@@ -33,6 +33,7 @@ import octobot_evaluators.evaluators.channel as evaluator_channels
 
 import octobot_trading.exchange_channel as exchanges_channel
 import octobot_trading.enums as trading_enums
+import octobot_trading.api as trading_api
 
 import octobot.constants as constants
 import octobot.configuration_manager as configuration_manager
@@ -90,6 +91,11 @@ def _load_logger_config():
                 os.mkdir(commons_constants.USER_FOLDER)
             shutil.copyfile(constants.LOGGING_CONFIG_FILE, configuration_manager.get_user_local_config_file())
         config.fileConfig(configuration_manager.get_user_local_config_file())
+        if constants.FORCED_LOG_LEVEL:
+            logging.getLogger("Logging Configuration").info(
+                f"Applying forced logging level {constants.FORCED_LOG_LEVEL}"
+            )
+            common_logging.set_global_logger_level(constants.FORCED_LOG_LEVEL)
     except Exception as ex:
         config.fileConfig(constants.LOGGING_CONFIG_FILE)
         logging.getLogger("Logging Configuration").warning(f"Impossible to initialize local logging configuration file,"
@@ -275,8 +281,26 @@ async def mark_price_callback(
     )
 
 
+def _filter_balance(balance: dict):
+    if not balance:
+        return balance, 0
+    first_value = next(iter(balance.values()))
+    if isinstance(first_value, dict):
+        filtered_balance = {
+            key: values
+            for key, values in balance.items()
+            if values.get(commons_constants.PORTFOLIO_TOTAL)
+        }
+        removed_count = len(balance) - len(filtered_balance)
+        return trading_api.parse_decimal_portfolio(filtered_balance, False), removed_count
+    return balance, 0
+
+
 async def balance_callback(exchange: str, exchange_id: str, balance):
-    BOT_CHANNEL_LOGGER.debug(f"BALANCE : EXCHANGE = {exchange} || BALANCE = {balance}")
+    filtered_balance, filtered_count = _filter_balance(balance)
+    BOT_CHANNEL_LOGGER.debug(
+        f"BALANCE : EXCHANGE = {exchange} || BALANCE = {filtered_balance} ({filtered_count} filtered empty assets)"
+    )
 
 
 async def balance_profitability_callback(

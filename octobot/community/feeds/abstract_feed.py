@@ -14,7 +14,9 @@
 #  You should have received a copy of the GNU General Public
 #  License along with OctoBot. If not, see <https://www.gnu.org/licenses/>.
 import time
+import typing
 
+import octobot.enums as enums
 import octobot_commons.logging as bot_logging
 
 
@@ -32,7 +34,10 @@ class AbstractFeed:
         self.is_signal_receiver = False
         self.is_signal_emitter = False
 
-    async def start(self):
+    def has_registered_feed(self) -> bool:
+        return bool(self.feed_callbacks)
+
+    async def start(self, stop_on_cfg_action: typing.Optional[enums.CommunityConfigurationActions]):
         raise NotImplementedError("start is not implemented")
 
     async def stop(self):
@@ -48,7 +53,13 @@ class AbstractFeed:
         return True
 
     def is_connected_to_remote_feed(self):
-        raise NotImplementedError("is_connected_to_remote_feed is not implemented")
+        return False
 
     def update_last_message_time(self):
         self.last_message_time = time.time()
+
+    def is_up_to_date_with_account(self, user_account):
+        return True
+
+    def is_connected(self):
+        return False
