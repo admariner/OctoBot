@@ -24,6 +24,7 @@ pytestmark = pytest.mark.asyncio
 class TestOKXFuturesAuthenticatedExchange(
     abstract_authenticated_future_exchange_tester.AbstractAuthenticatedFutureExchangeTester
 ):
+    # 19/03/24: can't test order creation due to test account region issues
     # enter exchange name as a class variable here
     EXCHANGE_NAME = "okx"
     ORDER_CURRENCY = "DOT"  # use DOT/USDT as contract size is much smaller, allowing to trade with smaller amounts
@@ -33,9 +34,38 @@ class TestOKXFuturesAuthenticatedExchange(
     ORDER_SIZE = 50  # % of portfolio to include in test orders
     SUPPORTS_EMPTY_POSITION_SET_MARGIN_TYPE = False
     SUPPORTS_DOUBLE_BUNDLED_ORDERS = False
+    VALID_ORDER_ID = "698652818181726221"
 
     async def test_get_portfolio(self):
         await super().test_get_portfolio()
+
+    async def test_get_portfolio_with_market_filter(self):
+        # pass if not implemented
+        pass
+
+    async def test_get_account_id(self):
+        await super().test_get_account_id()
+
+    async def test_untradable_symbols(self):
+        await super().test_untradable_symbols()
+
+    async def test_is_authenticated_request(self):
+        await super().test_is_authenticated_request()
+
+    async def test_invalid_api_key_error(self):
+        await super().test_invalid_api_key_error()
+
+    async def test_get_api_key_permissions(self):
+        await super().test_get_api_key_permissions()
+
+    async def test_missing_trading_api_key_permissions(self):
+        pass
+
+    async def test_api_key_ip_whitelist_error(self):
+        await super().test_api_key_ip_whitelist_error()
+
+    async def test_get_not_found_order(self):
+        await super().test_get_not_found_order()
 
     async def test_get_empty_linear_and_inverse_positions(self):
         await super().test_get_empty_linear_and_inverse_positions()
@@ -45,6 +75,12 @@ class TestOKXFuturesAuthenticatedExchange(
 
     async def test_get_and_set_leverage(self):
         await super().test_get_and_set_leverage()
+
+    async def test_is_valid_account(self):
+        await super().test_is_valid_account()
+
+    async def test_get_special_orders(self):
+        await super().test_get_special_orders()
 
     async def test_create_and_cancel_limit_orders(self):
         await super().test_create_and_cancel_limit_orders()
@@ -57,6 +93,9 @@ class TestOKXFuturesAuthenticatedExchange(
 
     async def test_get_closed_orders(self):
         await super().test_get_closed_orders()
+
+    async def test_get_cancelled_orders(self):
+        await super().test_get_cancelled_orders()
 
     async def test_create_and_cancel_stop_orders(self):
         await super().test_create_and_cancel_stop_orders()

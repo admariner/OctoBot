@@ -27,15 +27,53 @@ class TestMEXCAuthenticatedExchange(
     # enter exchange name as a class variable here
     EXCHANGE_NAME = "mexc"
     EXCHANGE_TENTACLE_NAME = "MEXC"
-    ORDER_CURRENCY = "MX"  # {"code":10007,"msg":"symbol not support api"} when trading BTC/USDT or ETH/USDT
+    ORDER_CURRENCY = "BTC"
     SETTLEMENT_CURRENCY = "USDT"
     SYMBOL = f"{ORDER_CURRENCY}/{SETTLEMENT_CURRENCY}"
     ORDER_SIZE = 30  # % of portfolio to include in test orders
     CONVERTS_ORDER_SIZE_BEFORE_PUSHING_TO_EXCHANGES = True
     CANCELLED_ORDERS_IN_CLOSED_ORDERS = True
+    EXPECT_MISSING_FEE_IN_CANCELLED_ORDERS = False
+    IS_ACCOUNT_ID_AVAILABLE = False
+    IS_AUTHENTICATED_REQUEST_CHECK_AVAILABLE = True    # set True when is_authenticated_request is implemented
+    USE_ORDER_OPERATION_TO_CHECK_API_KEY_RIGHTS = True
+    USED_TO_HAVE_UNTRADABLE_SYMBOL = True
 
     async def test_get_portfolio(self):
         await super().test_get_portfolio()
+
+    async def test_get_portfolio_with_market_filter(self):
+        await super().test_get_portfolio_with_market_filter()
+
+    async def test_untradable_symbols(self):
+        await super().test_untradable_symbols()
+
+    async def test_get_account_id(self):
+        await super().test_get_account_id()
+
+    async def test_is_authenticated_request(self):
+        await super().test_is_authenticated_request()
+
+    async def test_invalid_api_key_error(self):
+        await super().test_invalid_api_key_error()
+
+    async def test_get_api_key_permissions(self):
+        await super().test_get_api_key_permissions()
+
+    async def test_missing_trading_api_key_permissions(self):
+        await super().test_missing_trading_api_key_permissions()
+
+    async def test_api_key_ip_whitelist_error(self):
+        await super().test_api_key_ip_whitelist_error()
+
+    async def test_get_not_found_order(self):
+        await super().test_get_not_found_order()
+
+    async def test_is_valid_account(self):
+        await super().test_is_valid_account()
+
+    async def test_get_special_orders(self):
+        await super().test_get_special_orders()
 
     async def test_create_and_cancel_limit_orders(self):
         await super().test_create_and_cancel_limit_orders()
@@ -49,8 +87,11 @@ class TestMEXCAuthenticatedExchange(
     async def test_get_closed_orders(self):
         await super().test_get_closed_orders()
 
+    async def test_get_cancelled_orders(self):
+        await super().test_get_cancelled_orders()
+
     async def test_create_and_cancel_stop_orders(self):
-        # pass if not implemented
+        # NOT SUPPORTED by MEXC API (10/01/25)
         pass
 
     async def test_edit_limit_order(self):

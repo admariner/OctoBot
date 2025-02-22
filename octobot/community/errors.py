@@ -24,6 +24,10 @@ class StatusCodeRequestError(RequestError):
     pass
 
 
+class SessionTokenExpiredError(commons_authentication.AuthenticationError):
+    pass
+
+
 class BotError(commons_authentication.UnavailableError):
     pass
 
@@ -32,5 +36,29 @@ class BotNotFoundError(BotError):
     pass
 
 
+class BotDeploymentURLNotFoundError(BotError):
+    pass
+
+
+class MissingBotConfigError(BotError):
+    pass
+
+
+class InvalidBotConfigError(BotError):
+    pass
+
+
+class MissingProductConfigError(BotError):
+    pass
+
+
+class EmailValidationRequiredError(commons_authentication.AuthenticationError):
+    pass
+
+
 class NoBotDeviceError(BotError):
+    pass
+
+
+class ExtensionRequiredError(Exception):
     pass
